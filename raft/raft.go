@@ -152,7 +152,7 @@ func (r *Raft) appendEntries(req *pb.AppendEntriesRequest) (*pb.AppendEntriesRes
 		r.appendLogs(req.Entries)
 		r.logger.Info("receive and append new entries", zap.Int("newEntries", len(req.GetEntries())), zap.Int("numberOfEntries", len(r.logs)))
 	}
-	r.logger.Debug("logs content", zap.Int("log length", len(r.getLogs(1))), zap.Any("logs", r.getLogs(1)))
+	// r.logger.Debug("logs content", zap.Int("log length", len(r.getLogs(1))), zap.Any("logs", r.getLogs(1)))
 
 	// TODO: (B.5) - if leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
 	// Hint: use `getLastLog` to get the index of last new entry
@@ -464,7 +464,7 @@ func (r *Raft) broadcastAppendEntries(ctx context.Context, appendEntriesResultCh
 				PrevLogTerm:    0,
 				Entries:        entries,
 			}
-			r.logger.Debug("send initial append entries", zap.Uint32("peer", peerId), zap.Any("request", req), zap.Int("entries", len(entries)))
+			r.logger.Debug("send initial append entries", zap.Uint32("peer", peerId) /*zap.Any("request", req),*/, zap.Int("entries", len(entries)))
 		} else {
 			// r.logger.Debug("line 458", zap.Uint32("peerId", peerId), zap.Uint64("nextIdx", r.nextIndex[peerId]))
 			prevEntries := r.getLog(r.nextIndex[peerId] - 1) // nextIndex
@@ -477,7 +477,7 @@ func (r *Raft) broadcastAppendEntries(ctx context.Context, appendEntriesResultCh
 				PrevLogTerm:    prevEntries.GetTerm(),
 				Entries:        entries,
 			}
-			r.logger.Debug("send append entries", zap.Uint32("peer", peerId), zap.Any("request", req), zap.Int("entries", len(entries)))
+			r.logger.Debug("send append entries", zap.Uint32("peer", peerId) /*zap.Any("request", req),*/, zap.Int("entries", len(entries)))
 		}
 
 		// TODO: (A.14) & (B.6)
@@ -521,13 +521,13 @@ func (r *Raft) handleAppendEntriesResult(result *appendEntriesResult) {
 
 		r.setNextAndMatchIndex(result.peerId, nextIndex, matchIndex)
 		r.logger.Info("append entries failed, decrease next index", zap.Uint64("nextIndex", nextIndex), zap.Uint64("matchIndex", matchIndex))
+		return
 	} else if len(entries) != 0 {
 		// TODO: (B.8) - if successful: update nextIndex and matchIndex for follower
 		// Hint: use `setNextAndMatchIndex` to update nextIndex and matchIndex
 		// Log: r.logger.Info("append entries successfully, set next index and match index", zap.Uint32("peer", result.peerId), zap.Uint64("nextIndex", nextIndex), zap.Uint64("matchIndex", matchIndex))
-		lastLogID, _ := r.getLastLog()
-		nextIndex := lastLogID + 1
-		matchIndex := lastLogID
+		nextIndex := entries[len(entries)-1].Id + 1
+		matchIndex := nextIndex - 1
 
 		r.setNextAndMatchIndex(result.peerId, nextIndex, matchIndex)
 		r.logger.Info("append entries successfully, set next index and match index", zap.Uint32("peer", result.peerId), zap.Uint64("nextIndex", nextIndex), zap.Uint64("matchIndex", matchIndex))
@@ -548,8 +548,8 @@ func (r *Raft) handleAppendEntriesResult(result *appendEntriesResult) {
 				replicas++
 			}
 		}
-		r.logger.Debug("line 556 check replica needed", zap.Int("replicas needed", replicasNeeded), zap.Int("replicas", replicas), zap.Uint64("commit index", curIdx))
-		if replicas >= replicasNeeded {
+		// r.logger.Debug("line 556 check replica needed", zap.Int("replicas needed", replicasNeeded), zap.Int("replicas", replicas), zap.Uint64("commit index", curIdx))
+		if replicas >= replicasNeeded && logs[i].Term == r.currentTerm {
 			r.setCommitIndex(curIdx)
 			r.applyLogs(r.applyCh)
 			r.logger.Debug("line 560 leader commit", zap.Uint64("commit index", curIdx))
