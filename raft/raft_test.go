@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"fmt"
 	"math/rand"
 	"strconv"
 	"sync"
@@ -260,6 +261,7 @@ func TestOnlyUpToDateCandidateWinLeaderElection(t *testing.T) {
 	c.applyCommand(oldLeaderId, oldLeaderTerm, data1)
 	time.Sleep(500 * time.Millisecond)
 
+	// find any two different server
 	peerId1 := randomPeerId(oldLeaderId, numNodes)
 	peerId2 := peerId1
 	for peerId2 == peerId1 {
@@ -293,6 +295,7 @@ func TestOnlyUpToDateCandidateWinLeaderElection(t *testing.T) {
 			c.checkLog(id, 2, oldLeaderTerm, data2)
 		}
 	}
+	fmt.Println("pass log replicated test")
 
 	// restart the 2 followers
 	c.initialize(peerId1)
@@ -319,6 +322,7 @@ func TestOnlyUpToDateCandidateWinLeaderElection(t *testing.T) {
 	if newLeaderTerm <= oldLeaderTerm {
 		t.Fatalf("new leader %d should have term %d greater than the old term %d", newLeaderId, newLeaderTerm, oldLeaderTerm)
 	}
+	fmt.Println("pass new leader not be the 2 stopped follower test")
 
 	// log 2 are finally replicated on the 2 followers that are stopped before
 	for i := 1; i <= numNodes; i++ {
@@ -328,6 +332,7 @@ func TestOnlyUpToDateCandidateWinLeaderElection(t *testing.T) {
 			c.checkLog(id, 2, oldLeaderTerm, data2)
 		}
 	}
+	fmt.Println("pass log 2 replicated on the 2 stopped followers test")
 
 	// restart old leader
 	c.initialize(oldLeaderId)
